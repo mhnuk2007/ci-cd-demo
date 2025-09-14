@@ -9,4 +9,3 @@ public class HelloController {
     public String greet(){
         return "Hello World!";
     }
-}
