@@ -26,4 +26,4 @@ jobs:
             whoami
             pwd
             ls -la
-            # Add your deployment commands here
+            # Add your deployment commands here, no ec2 instance 
