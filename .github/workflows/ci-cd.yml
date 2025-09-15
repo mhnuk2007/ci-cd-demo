@@ -1,71 +1,60 @@
-name: Deploy Spring Boot to EC2
+  Skip to content
+    Navigation Menu
+    mhnuk2007
+    ci-cd-demo
+    
+    Type / to search
+    Code
+    Issues
+    Pull requests
+    Actions
+    Projects
+    Wiki
+    Security
+    Insights
+    Settings
+    Java CI/CD with Maven and Docker
+    add Dockerfile for Docker build #8
+    Jobs
+    Run details
+    Workflow file for this run
+    .github/workflows/ci-cd.yml at 66b1606
+  name: Java CI/CD with Maven and Docker
 
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+  on:
+    push:
+      branches: [ "main" ]
+    pull_request:
+      branches: [ "main" ]
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
+  jobs:
+    build:
+      runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
+        - name: Set up JDK 21
+          uses: actions/setup-java@v4
+          with:
+            java-version: '21'
+            distribution: 'temurin'
+            cache: maven
 
-      - name: Cache Maven dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        - name: Build and test with Maven
+          run: mvn clean verify -B
 
-      - name: Build with Maven
-        run: mvn clean package -DskipTests
+        - name: Build Docker image
+          run: docker build -t ci-cd-demo .
 
-      - name: Copy JAR to EC2
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          source: "target/ci-cd-demo-*.jar"
-          target: "/home/ubuntu/app/"
+        - name: Log in to DockerHub
+          uses: docker/login-action@v3
+          with:
+            username: ${{ secrets.DOCKER_HUB_USERNAME }}
+            password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          script: |
-            # Navigate to app directory
-            cd /home/ubuntu/app
-            
-            # Stop existing application
-            sudo pkill -f 'java.*ci-cd-demo' || true
-            sleep 5
-            
-            # Move new JAR file.
-            mv target/ci-cd-demo-*.jar app.jar
-            
-            # Start application
-            nohup java -jar app.jar --server.port=8080 > app.log 2>&1 &
-            
-            # Wait and verify
-            sleep 10
-            if pgrep -f 'java.*app.jar' > /dev/null; then
-              echo "✅ Application started successfully!"
-              echo "🌐 Access at: http://18.212.157.139:8080"
-            else
-              echo "❌ Application failed to start"
-              cat app.log
-              exit 1
-            fi
+        - name: Push Docker image
+          run: |
+            docker tag ci-cd-demo ${{ secrets.DOCKER_HUB_USERNAME }}/ci-cd-demo:latest
+            docker push ${{ secrets.DOCKER_HUB_USERNAME }}/ci-cd-demo:latest
