@@ -1,8 +1,9 @@
-name: Deploy to EC2
+name: Deploy Spring Boot to EC2
 
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -12,40 +13,59 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: '17'
           distribution: 'temurin'
-          cache: maven
 
-      - name: Build and Deploy
+      - name: Cache Maven dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+
+      - name: Build with Maven
+        run: mvn clean package -DskipTests
+
+      - name: Copy JAR to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          source: "target/ci-cd-demo-*.jar"
+          target: "/home/ubuntu/app/"
+
+      - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
+          username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            # Stop any running app
-            pkill -f 'java -jar' || true
-            sleep 3
+            # Navigate to app directory
+            cd /home/ubuntu/app
             
-            # Go to your project directory (clone if not exists)
-            if [ ! -d "ci-cd-demo" ]; then
-              git clone https://github.com/${{ github.repository }}.git ci-cd-demo
-            fi
-            
-            cd ci-cd-demo
-            git pull origin main
-            
-            # Build directly on the server
-            mvn clean package -DskipTests
-            
-            # Start the application
-            echo "Starting application..."
-            nohup java -jar target/ci-cd-demo-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
+            # Stop existing application
+            sudo pkill -f 'java.*ci-cd-demo' || true
             sleep 5
             
-            echo "Application started. Last 20 lines of log:"
-            tail -n 20 app.log
+            # Move new JAR file
+            mv target/ci-cd-demo-*.jar app.jar
+            
+            # Start application
+            nohup java -jar app.jar --server.port=8080 > app.log 2>&1 &
+            
+            # Wait and verify
+            sleep 10
+            if pgrep -f 'java.*app.jar' > /dev/null; then
+              echo "✅ Application started successfully!"
+              echo "🌐 Access at: http://18.212.157.139:8080"
+            else
+              echo "❌ Application failed to start"
+              cat app.log
+              exit 1
+            fi
