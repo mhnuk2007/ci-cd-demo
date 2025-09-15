@@ -50,67 +50,67 @@ jobs:
           script: |
             set -e  # Exit on any error
             
-            cd ~/ci-cd-demo || { echo "Failed to change to ci-cd-demo directory"; exit 1; }
+            cd ~/ci-cd-demo || { echo "❌ Failed to change to ci-cd-demo directory"; exit 1; }
             
-            echo "Stopping any running application..."
-            pkill -f 'java -jar.*ci-cd-demo' || echo "No previous app instance was running"
+            echo "🔄 Stopping any running application..."
+            pkill -f 'java -jar.*ci-cd-demo' || echo "ℹ️  No previous app instance was running"
             
             # Give time for graceful shutdown
             sleep 3
             
-            echo "Looking for JAR file..."
+            echo "🔍 Looking for JAR file..."
             JAR_FILE=$(ls -t *.jar 2>/dev/null | head -n1)
             
             if [ -z "$JAR_FILE" ]; then
-              echo "No JAR file found!"
-              echo "Current directory contents:"
+              echo "❌ No JAR file found!"
+              echo "📁 Current directory contents:"
               ls -la
               exit 1
             fi
             
-            echo "Found JAR file: $JAR_FILE"
+            echo "✅ Found JAR file: $JAR_FILE"
             
             # Backup previous log if it exists
             if [ -f app.log ]; then
               cp app.log app.log.backup
-              echo "Previous log backed up to app.log.backup"
+              echo "📝 Previous log backed up to app.log.backup"
             fi
             
-            echo "Starting new application..."
+            echo "🚀 Starting new application..."
             nohup java -jar "$JAR_FILE" > app.log 2>&1 &
             APP_PID=$!
             
-            echo "Application started with PID: $APP_PID"
-            echo "Waiting for application to initialize..."
+            echo "⏳ Application started with PID: $APP_PID"
+            echo "⏳ Waiting for application to initialize..."
             
             # Wait for startup
             sleep 10
             
             # Verify the process is still running
             if ! kill -0 $APP_PID 2>/dev/null; then
-              echo "Application process died during startup!"
-              echo "Application log:"
+              echo "❌ Application process died during startup!"
+              echo "📋 Application log:"
               cat app.log
               exit 1
             fi
             
-            echo "Application is running successfully!"
-            echo "Last 20 lines of application log:"
+            echo "✅ Application is running successfully!"
+            echo "📋 Last 20 lines of application log:"
             tail -n 20 app.log
             
             # Optional: Check if app responds on expected port
-            echo "Checking if application is listening on port 8080..."
+            echo "🔍 Checking if application is listening on port 8080..."
             for i in {1..30}; do
               if netstat -tlnp 2>/dev/null | grep -q ':8080.*LISTEN'; then
-                echo "Application is listening on port 8080"
+                echo "✅ Application is listening on port 8080"
                 break
               elif [ $i -eq 30 ]; then
-                echo "Warning: Application may not be listening on port 8080 yet"
+                echo "⚠️  Warning: Application may not be listening on port 8080 yet"
               else
                 sleep 1
               fi
             done
             
-            echo "Deployment completed successfully!"
-            echo "Process info: PID $APP_PID"
-            echo "Logs available at: ~/ci-cd-demo/app.log"
+            echo "🎉 Deployment completed successfully!"
+            echo "📊 Process info: PID $APP_PID"
+            echo "📝 Logs available at: ~/ci-cd-demo/app.log"
