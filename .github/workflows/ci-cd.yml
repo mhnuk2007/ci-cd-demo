@@ -53,7 +53,7 @@ jobs:
             sudo pkill -f 'java.*ci-cd-demo' || true
             sleep 5
             
-            # Move new JAR file
+            # Move new JAR file.
             mv target/ci-cd-demo-*.jar app.jar
             
             # Start application
