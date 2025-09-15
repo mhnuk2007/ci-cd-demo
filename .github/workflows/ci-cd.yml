@@ -36,12 +36,23 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            cd ~
-            mkdir -p ci-cd-demo
-            cd ci-cd-demo
-            # Stop previous app if running
-            pkill -f 'java -jar target/ci-cd-demo*.jar' || true
-            # Copy new JAR
+            # Set deployment directory
+            DEPLOY_DIR=~/ci-cd-demo
+            mkdir -p $DEPLOY_DIR
+            cd $DEPLOY_DIR
+
+            # Stop previous app (kill any running jar)
+            pkill -f 'java -jar .*ci-cd-demo.*\.jar' || true
+
+            # Remove old JARs
+            rm -f *.jar
+
+            # Copy new JAR from GitHub workspace
             cp ~/ci-cd-demo/target/*.jar .
-            # Run the app in background
-            nohup java -jar target/*.jar > app.log 2>&1 &
+
+            # Start new app in background and redirect logs
+            nohup java -jar *.jar > app.log 2>&1 &
+
+            # Optional: Show last 10 lines of logs
+            sleep 5
+            tail -n 10 app.log
