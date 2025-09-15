@@ -1,58 +1,24 @@
-name: Java CI/CD to EC2
+# 4️⃣ Deploy to EC2
+- name: Deploy to EC2
+  uses: appleboy/scp-action@v0.1.1
+  with:
+    host: ${{ secrets.EC2_HOST }}
+    username: ${{ secrets.EC2_USER }}
+    key: ${{ secrets.EC2_SSH_KEY }}
+    port: 22
+    source: "target/*.jar"       # From GitHub runner
+    target: "~/ci-cd-demo/"     # On EC2
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-
-    steps:
-      # 1️⃣ Checkout repository
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      # 2️⃣ Set up JDK
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: maven
-
-      # 3️⃣ Build JAR
-      - name: Build with Maven
-        run: mvn clean package -DskipTests
-
-      # 4️⃣ Deploy to EC2
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@v0.1.9
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          script: |
-            # Set deployment directory
-            DEPLOY_DIR=~/ci-cd-demo
-            mkdir -p $DEPLOY_DIR
-            cd $DEPLOY_DIR
-
-            # Stop previous app (kill any running jar)
-            pkill -f 'java -jar .*ci-cd-demo.*\.jar' || true
-
-            # Remove old JARs
-            rm -f *.jar
-
-            # Copy new JAR from GitHub workspace
-            cp ~/ci-cd-demo/target/*.jar .
-
-            # Start new app in background and redirect logs
-            nohup java -jar *.jar > app.log 2>&1 &
-
-            # Optional: Show last 10 lines of logs
-            sleep 5
-            tail -n 10 app.log
+- name: Start app on EC2
+  uses: appleboy/ssh-action@v0.1.9
+  with:
+    host: ${{ secrets.EC2_HOST }}
+    username: ${{ secrets.EC2_USER }}
+    key: ${{ secrets.EC2_SSH_KEY }}
+    port: 22
+    script: |
+      cd ~/ci-cd-demo
+      # Stop previous app
+      pkill -f 'java -jar .*ci-cd-demo.*\.jar' || true
+      # Start new app
+      nohup java -jar *.jar > app.log 2>&1 &
