@@ -37,21 +37,3 @@ jobs:
           port: 22
           source: "target/*.jar"       # JAR on GitHub runner
           target: "~/ci-cd-demo/"     # Deployment directory on EC2
-
-      # 5️⃣ Start app on EC2
-      - name: Start app on EC2
-        uses: appleboy/ssh-action@v0.1.9
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          script: |
-            cd ~/ci-cd-demo
-            # Stop previous app
-            pkill -f 'java -jar .*ci-cd-demo.*\.jar' || true
-            # Start new app in background
-            nohup java -jar *.jar > app.log 2>&1 &
-            # Optional: Show last 10 lines of logs
-            sleep 5
-            tail -n 10 app.log
