@@ -3,19 +3,15 @@ name: Deploy to EC2
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2️⃣ Set up JDK 21
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
@@ -23,11 +19,10 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # 3️⃣ Build the Spring Boot JAR
       - name: Build JAR
         run: mvn clean package -DskipTests
 
-      # 4️⃣ Copy JAR to EC2 (flattened structure)
+      # Simple: just copy the specific JAR file
       - name: Upload JAR to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -35,12 +30,11 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
-          source: "target/*.jar"
-          target: "~/ci-cd-demo/"
-          strip_components: 1
+          source: "target/ci-cd-demo-0.0.1-SNAPSHOT.jar"
+          target: "~/ci-cd-demo/app.jar"
 
-      # 5️⃣ Deploy and Start App with comprehensive error handling
-      - name: Deploy and Start App
+      # Simple: just restart with the known filename
+      - name: Deploy App
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -48,69 +42,12 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            set -e  # Exit on any error
-            
-            cd ~/ci-cd-demo || { echo "❌ Failed to change to ci-cd-demo directory"; exit 1; }
-            
-            echo "🔄 Stopping any running application..."
-            pkill -f 'java -jar.*ci-cd-demo' || echo "ℹ️  No previous app instance was running"
-            
-            # Give time for graceful shutdown
+            cd ~/ci-cd-demo
+            echo "Stopping application..."
+            pkill -f 'java -jar' || true
             sleep 3
-            
-            echo "🔍 Looking for JAR file..."
-            JAR_FILE=$(ls -t *.jar 2>/dev/null | head -n1)
-            
-            if [ -z "$JAR_FILE" ]; then
-              echo "❌ No JAR file found!"
-              echo "📁 Current directory contents:"
-              ls -la
-              exit 1
-            fi
-            
-            echo "✅ Found JAR file: $JAR_FILE"
-            
-            # Backup previous log if it exists
-            if [ -f app.log ]; then
-              cp app.log app.log.backup
-              echo "📝 Previous log backed up to app.log.backup"
-            fi
-            
-            echo "🚀 Starting new application..."
-            nohup java -jar "$JAR_FILE" > app.log 2>&1 &
-            APP_PID=$!
-            
-            echo "⏳ Application started with PID: $APP_PID"
-            echo "⏳ Waiting for application to initialize..."
-            
-            # Wait for startup
-            sleep 10
-            
-            # Verify the process is still running
-            if ! kill -0 $APP_PID 2>/dev/null; then
-              echo "❌ Application process died during startup!"
-              echo "📋 Application log:"
-              cat app.log
-              exit 1
-            fi
-            
-            echo "✅ Application is running successfully!"
-            echo "📋 Last 20 lines of application log:"
+            echo "Starting application..."
+            nohup java -jar app.jar > app.log 2>&1 &
+            sleep 5
+            echo "Application log:"
             tail -n 20 app.log
-            
-            # Optional: Check if app responds on expected port
-            echo "🔍 Checking if application is listening on port 8080..."
-            for i in {1..30}; do
-              if netstat -tlnp 2>/dev/null | grep -q ':8080.*LISTEN'; then
-                echo "✅ Application is listening on port 8080"
-                break
-              elif [ $i -eq 30 ]; then
-                echo "⚠️  Warning: Application may not be listening on port 8080 yet"
-              else
-                sleep 1
-              fi
-            done
-            
-            echo "🎉 Deployment completed successfully!"
-            echo "📊 Process info: PID $APP_PID"
-            echo "📝 Logs available at: ~/ci-cd-demo/app.log"
