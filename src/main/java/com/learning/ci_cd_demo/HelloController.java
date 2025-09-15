@@ -7,6 +7,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class HelloController {
     @GetMapping("/")
     public String greet() {
-        return "Hello World!" + "I am experimenting with github actions, Successfully deployed in AWS EC2";
+        return "Hello World!" + "I am experimenting with github actions, Successfully deployed in AWS EC2 Instance";
     }
 }
