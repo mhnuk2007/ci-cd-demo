@@ -19,22 +19,7 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build JAR
-        run: mvn clean package -DskipTests
-
-      # Simple: just copy the specific JAR file
-      - name: Upload JAR to EC2
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          source: "target/ci-cd-demo-0.0.1-SNAPSHOT.jar"
-          target: "~/ci-cd-demo/app.jar"
-
-      # Simple: just restart with the known filename
-      - name: Deploy App
+      - name: Build and Deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -42,12 +27,25 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            cd ~/ci-cd-demo
-            echo "Stopping application..."
+            # Stop any running app
             pkill -f 'java -jar' || true
             sleep 3
+            
+            # Go to your project directory (clone if not exists)
+            if [ ! -d "ci-cd-demo" ]; then
+              git clone https://github.com/${{ github.repository }}.git ci-cd-demo
+            fi
+            
+            cd ci-cd-demo
+            git pull origin main
+            
+            # Build directly on the server
+            mvn clean package -DskipTests
+            
+            # Start the application
             echo "Starting application..."
-            nohup java -jar app.jar > app.log 2>&1 &
+            nohup java -jar target/ci-cd-demo-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
             sleep 5
-            echo "Application log:"
+            
+            echo "Application started. Last 20 lines of log:"
             tail -n 20 app.log
