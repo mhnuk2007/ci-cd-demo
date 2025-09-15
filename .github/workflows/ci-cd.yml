@@ -39,7 +39,7 @@ jobs:
           target: "~/ci-cd-demo/"
 
       # 5️⃣ Run or restart the app on EC2
-      - name: Deploy to EC2
+      - name: Deploy and Start App
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -49,9 +49,10 @@ jobs:
           script: |
             cd ~/ci-cd-demo
             echo "Stopping any running app..."
-            pkill -f 'java -jar' || true
+            pkill -f 'java -jar' || echo "No app was running"
             echo "Starting new app..."
-            nohup java -jar target/ci-cd-demo-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
+            JAR_FILE=$(ls -t *.jar | head -n1)   # pick latest uploaded JAR
+            nohup java -jar $JAR_FILE > app.log 2>&1 &
             sleep 5
-            echo "Last 20 lines of app.log:"
+            echo "Last 20 lines of log:"
             tail -n 20 app.log
