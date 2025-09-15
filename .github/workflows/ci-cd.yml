@@ -1,4 +1,3 @@
-#
 name: Java CI/CD to EC2
 
 on:
