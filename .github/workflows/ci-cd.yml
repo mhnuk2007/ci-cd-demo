@@ -36,4 +36,4 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           source: "target/*.jar"       # JAR on GitHub runner
-          target: "~/ci-cd-demo/"     # Deployment directory on EC2
+          target: "~/ci-cd-demo/"     # Deployment directory on EC2 Instance
