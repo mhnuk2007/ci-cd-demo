@@ -34,7 +34,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
-          script: "echo 'SSH connection successful!'"
+          script: "echo 'SSH connection successful!!!'"
 
 
       # 4️⃣ Deploy to EC2
