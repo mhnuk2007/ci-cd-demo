@@ -1,24 +1,3 @@
-  Skip to content
-    Navigation Menu
-    mhnuk2007
-    ci-cd-demo
-    
-    Type / to search
-    Code
-    Issues
-    Pull requests
-    Actions
-    Projects
-    Wiki
-    Security
-    Insights
-    Settings
-    Java CI/CD with Maven and Docker
-    add Dockerfile for Docker build #8
-    Jobs
-    Run details
-    Workflow file for this run
-    .github/workflows/ci-cd.yml at 66b1606
   name: Java CI/CD with Maven and Docker
 
   on:
